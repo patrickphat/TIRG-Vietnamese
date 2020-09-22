@@ -71,12 +71,12 @@ class CSSDataset(BaseDataset):
     self.img_path = path + '/images/'
     self.transform = transform
     self.split = split
-    self.data = np.load(path + '/css_toy_dataset_novel2_small.dup.npy').item()
+    self.data = np.load(path + '/css_toy_dataset_novel2_small.dup.npy',allow_pickle=True, encoding="latin1").item()
     self.mods = self.data[self.split]['mods']
     self.imgs = []
     for objects in self.data[self.split]['objects_img']:
       label = len(self.imgs)
-      if self.data[self.split].has_key('labels'):
+      if 'labels' in self.data[self.split]:
         label = self.data[self.split]['labels'][label]
       self.imgs += [{
           'objects': objects,
@@ -229,7 +229,7 @@ class Fashion200k(BaseDataset):
                                    '&', 'andmark').replace('*', 'starmark')
 
     for filename in label_files:
-      print('read ' + filename)
+      print(('read ' + filename))
       with open(label_path + '/' + filename) as f:
         lines = f.readlines()
       for line in lines:
@@ -242,7 +242,7 @@ class Fashion200k(BaseDataset):
             'modifiable': False
         }
         self.imgs += [img]
-    print 'Fashion200k:', len(self.imgs), 'images'
+    print('Fashion200k:', len(self.imgs), 'images')
 
     # generate query for training or testing
     if split == 'train':
@@ -295,21 +295,21 @@ class Fashion200k(BaseDataset):
     caption2imgids = {}
     for i, img in enumerate(self.imgs):
       for c in img['captions']:
-        if not caption2id.has_key(c):
+        if c not in caption2id:
           id2caption[len(caption2id)] = c
           caption2id[c] = len(caption2id)
           caption2imgids[c] = []
         caption2imgids[c].append(i)
     self.caption2imgids = caption2imgids
-    print len(caption2imgids), 'unique cations'
+    print(len(caption2imgids), 'unique cations')
 
     # parent captions are 1-word shorter than their children
     parent2children_captions = {}
-    for c in caption2id.keys():
+    for c in list(caption2id.keys()):
       for w in c.split():
         p = c.replace(w, '')
         p = p.replace('  ', ' ').strip()
-        if not parent2children_captions.has_key(p):
+        if p not in parent2children_captions:
           parent2children_captions[p] = []
         if c not in parent2children_captions[p]:
           parent2children_captions[p].append(c)
@@ -329,7 +329,7 @@ class Fashion200k(BaseDataset):
     for img in self.imgs:
       if img['modifiable']:
         num_modifiable_imgs += 1
-    print 'Modifiable images', num_modifiable_imgs
+    print('Modifiable images', num_modifiable_imgs)
 
   def caption_index_sample_(self, idx):
     while not self.imgs[idx]['modifiable']:
@@ -397,14 +397,14 @@ class MITStates(BaseDataset):
 
     self.imgs = []
     test_nouns = [
-        u'armor', u'bracelet', u'bush', u'camera', u'candy', u'castle',
-        u'ceramic', u'cheese', u'clock', u'clothes', u'coffee', u'fan', u'fig',
-        u'fish', u'foam', u'forest', u'fruit', u'furniture', u'garden', u'gate',
-        u'glass', u'horse', u'island', u'laptop', u'lead', u'lightning',
-        u'mirror', u'orange', u'paint', u'persimmon', u'plastic', u'plate',
-        u'potato', u'road', u'rubber', u'sand', u'shell', u'sky', u'smoke',
-        u'steel', u'stream', u'table', u'tea', u'tomato', u'vacuum', u'wax',
-        u'wheel', u'window', u'wool'
+        'armor', 'bracelet', 'bush', 'camera', 'candy', 'castle',
+        'ceramic', 'cheese', 'clock', 'clothes', 'coffee', 'fan', 'fig',
+        'fish', 'foam', 'forest', 'fruit', 'furniture', 'garden', 'gate',
+        'glass', 'horse', 'island', 'laptop', 'lead', 'lightning',
+        'mirror', 'orange', 'paint', 'persimmon', 'plastic', 'plate',
+        'potato', 'road', 'rubber', 'sand', 'shell', 'sky', 'smoke',
+        'steel', 'stream', 'table', 'tea', 'tomato', 'vacuum', 'wax',
+        'wheel', 'window', 'wool'
     ]
 
     from os import listdir
@@ -476,14 +476,14 @@ class MITStates(BaseDataset):
       cap = img['captions'][0]
       adj = img['adj']
       noun = img['noun']
-      if cap not in self.caption2imgids.keys():
+      if cap not in list(self.caption2imgids.keys()):
         self.caption2imgids[cap] = []
-      if noun not in self.noun2adjs.keys():
+      if noun not in list(self.noun2adjs.keys()):
         self.noun2adjs[noun] = []
       self.caption2imgids[cap].append(i)
       if adj not in self.noun2adjs[noun]:
         self.noun2adjs[noun].append(adj)
-    for noun, adjs in self.noun2adjs.iteritems():
+    for noun, adjs in self.noun2adjs.items():
       assert len(adjs) >= 2
 
   def caption_index_sample_(self, idx):
@@ -510,7 +510,7 @@ class MITStates(BaseDataset):
                   'str': mod_str
               }
           }]
-    print len(self.test_queries), 'test queries'
+    print(len(self.test_queries), 'test queries')
 
   def __len__(self):
     return len(self.imgs)

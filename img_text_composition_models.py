@@ -69,7 +69,7 @@ class ImgTextCompositionBase(torch.nn.Module):
 
   def compute_soft_triplet_loss_(self, mod_img1, img2):
     triplets = []
-    labels = range(mod_img1.shape[0]) + range(img2.shape[0])
+    labels = list(range(mod_img1.shape[0])) + list(range(img2.shape[0]))
     for i in range(len(labels)):
       triplets_i = []
       for j in range(len(labels)):
@@ -84,7 +84,7 @@ class ImgTextCompositionBase(torch.nn.Module):
 
   def compute_batch_based_classification_loss_(self, mod_img1, img2):
     x = torch.mm(mod_img1, img2.transpose(0, 1))
-    labels = torch.tensor(range(x.shape[0])).long()
+    labels = torch.tensor(list(range(x.shape[0]))).long()
     labels = torch.autograd.Variable(labels).cuda()
     return F.cross_entropy(x, labels)
 

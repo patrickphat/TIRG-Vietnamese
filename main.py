@@ -31,6 +31,9 @@ import torch.utils.data
 import torchvision
 from tqdm import tqdm as tqdm
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning) 
+
 torch.set_num_threads(3)
 
 
@@ -49,16 +52,17 @@ def parse_opt():
       '--learning_rate_decay_frequency', type=int, default=9999999)
   parser.add_argument('--batch_size', type=int, default=32)
   parser.add_argument('--weight_decay', type=float, default=1e-6)
-  parser.add_argument('--num_iters', type=int, default=210000)
+  parser.add_argument('--num_epochs', type=int, default=100)
   parser.add_argument('--loss', type=str, default='soft_triplet')
   parser.add_argument('--loader_num_workers', type=int, default=4)
+  parser.add_argument('--pretrained_weights',type=str, default=None)
   args = parser.parse_args()
   return args
 
 
 def load_dataset(opt):
   """Loads the input datasets."""
-  print 'Reading dataset ', opt.dataset
+  print('Reading dataset ', opt.dataset)
   if opt.dataset == 'css3d':
     trainset = datasets.CSSDataset(
         path=opt.dataset_path,
@@ -119,17 +123,17 @@ def load_dataset(opt):
                                              [0.229, 0.224, 0.225])
         ]))
   else:
-    print 'Invalid dataset', opt.dataset
+    print('Invalid dataset', opt.dataset)
     sys.exit()
 
-  print 'trainset size:', len(trainset)
-  print 'testset size:', len(testset)
+  print('trainset size:', len(trainset))
+  print('testset size:', len(testset))
   return trainset, testset
 
 
 def create_model_and_optimizer(opt, texts):
   """Builds the model and related optimizer."""
-  print 'Creating model and optimizer for', opt.model
+  print('Creating model and optimizer for', opt.model)
   if opt.model == 'imgonly':
     model = img_text_composition_models.SimpleModelImageOnly(
         texts, embed_dim=opt.embed_dim)
@@ -144,11 +148,11 @@ def create_model_and_optimizer(opt, texts):
     model = img_text_composition_models.TIRGLastConv(
         texts, embed_dim=opt.embed_dim)
   else:
-    print 'Invalid model', opt.model
-    print 'available: imgonly, textonly, concat, tirg or tirg_lastconv'
+    print('Invalid model', opt.model)
+    print('available: imgonly, textonly, concat, tirg or tirg_lastconv')
     sys.exit()
   model = model.cuda()
-
+  
   # create optimizer
   params = []
   # low learning rate for pretrained layers on real image datasets
@@ -171,26 +175,32 @@ def create_model_and_optimizer(opt, texts):
               p2['params'][j] = torch.tensor(0.0, requires_grad=True)
   optimizer = torch.optim.SGD(
       params, lr=opt.learning_rate, momentum=0.9, weight_decay=opt.weight_decay)
+
+  if opt.pretrained_weights:
+    print(f"Pretrained model from {opt.pretrained_weights}")
+    state_dict = torch.load(opt.pretrained_weights)
+    model.load_state_dict(state_dict["model_state_dict"])
+
   return model, optimizer
 
 
 def train_loop(opt, logger, trainset, testset, model, optimizer):
   """Function for train loop"""
-  print 'Begin training'
+  print('Begin training')
   losses_tracking = {}
   it = 0
   epoch = -1
   tic = time.time()
-  while it < opt.num_iters:
+  while epoch < opt.num_epochs:
     epoch += 1
 
     # show/log stats
-    print 'It', it, 'epoch', epoch, 'Elapsed time', round(time.time() - tic,
-                                                          4), opt.comment
+    print('It', it, 'epoch', epoch, 'Elapsed time', round(time.time() - tic,
+                                                          4), opt.comment)
     tic = time.time()
     for loss_name in losses_tracking:
       avg_loss = np.mean(losses_tracking[loss_name][-len(trainloader):])
-      print '    Loss', loss_name, round(avg_loss, 4)
+      print('    Loss', loss_name, round(avg_loss, 4))
       logger.add_scalar(loss_name, avg_loss, it)
     logger.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], it)
 
@@ -203,7 +213,7 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
                   for metric_name, metric_value in t]
       for metric_name, metric_value in tests:
         logger.add_scalar(metric_name, metric_value, it)
-        print '    ', metric_name, round(metric_value, 4)
+        print('    ', metric_name, round(metric_value, 4))
 
     # save checkpoint
     torch.save({
@@ -231,7 +241,7 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
       img2 = torch.from_numpy(img2).float()
       img2 = torch.autograd.Variable(img2).cuda()
       mods = [str(d['mod']['str']) for d in data]
-      mods = [t.decode('utf-8') for t in mods]
+      mods = [t for t in mods]
 
       # compute loss
       losses = []
@@ -242,7 +252,7 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
         loss_value = model.compute_loss(
             img1, mods, img2, soft_triplet_loss=False)
       else:
-        print 'Invalid loss function', opt.loss
+        print('Invalid loss function', opt.loss)
         sys.exit()
       loss_name = opt.loss
       loss_weight = 1.0
@@ -256,7 +266,7 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
 
       # track losses
       for loss_name, loss_weight, loss_value in losses:
-        if not losses_tracking.has_key(loss_name):
+        if loss_name not in losses_tracking:
           losses_tracking[loss_name] = []
         losses_tracking[loss_name].append(float(loss_value))
 
@@ -274,23 +284,23 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
         for g in optimizer.param_groups:
           g['lr'] *= 0.1
 
-  print 'Finished training'
+  print('Finished training')
 
 
 def main():
   opt = parse_opt()
-  print 'Arguments:'
-  for k in opt.__dict__.keys():
-    print '    ', k, ':', str(opt.__dict__[k])
+  print('Arguments:')
+  for k in list(opt.__dict__.keys()):
+    print('    ', k, ':', str(opt.__dict__[k]))
 
   logger = SummaryWriter(comment=opt.comment)
-  print 'Log files saved to', logger.file_writer.get_logdir()
-  for k in opt.__dict__.keys():
+  print('Log files saved to', logger.file_writer.get_logdir())
+  for k in list(opt.__dict__.keys()):
     logger.add_text(k, str(opt.__dict__[k]))
 
   trainset, testset = load_dataset(opt)
   model, optimizer = create_model_and_optimizer(
-      opt, [t.decode('utf-8') for t in trainset.get_all_texts()])
+      opt, [t for t in trainset.get_all_texts()])
 
   train_loop(opt, logger, trainset, testset, model, optimizer)
   logger.close()

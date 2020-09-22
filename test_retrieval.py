@@ -40,7 +40,7 @@ def test(opt, model, testset):
           imgs = [torch.from_numpy(d).float() for d in imgs]
         imgs = torch.stack(imgs).float()
         imgs = torch.autograd.Variable(imgs).cuda()
-        mods = [t.decode('utf-8') for t in mods]
+        mods = [t for t in mods]
         f = model.compose_img_text(imgs, mods).data.cpu().numpy()
         all_queries += [f]
         imgs = []
@@ -50,7 +50,7 @@ def test(opt, model, testset):
 
     # compute all image features
     imgs = []
-    for i in tqdm(range(len(testset.imgs))):
+    for i in tqdm(list(range(len(testset.imgs)))):
       imgs += [testset.get_img(i)]
       if len(imgs) >= opt.batch_size or i == len(testset.imgs) - 1:
         if 'torch' not in str(type(imgs[0])):
@@ -75,7 +75,7 @@ def test(opt, model, testset):
       if len(imgs) > opt.batch_size or i == 9999:
         imgs = torch.stack(imgs).float()
         imgs = torch.autograd.Variable(imgs)
-        mods = [t.decode('utf-8') for t in mods]
+        mods = [t for t in mods]
         f = model.compose_img_text(imgs.cuda(), mods).data.cpu().numpy()
         all_queries += [f]
         imgs = []
