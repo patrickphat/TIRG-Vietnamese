@@ -1,0 +1,2 @@
+python main.py --dataset=css3d --dataset_path=../data/CSSDataset/CSS-vn-vanilla.json --num_epochs=1000 \
+  --model=tirg_lastconv --loss=soft_triplet --comment=css_vn_vanilla_v2_concat --n_epochs_validation=5

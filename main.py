@@ -53,6 +53,7 @@ def parse_opt():
   parser.add_argument('--batch_size', type=int, default=32)
   parser.add_argument('--weight_decay', type=float, default=1e-6)
   parser.add_argument('--num_epochs', type=int, default=100)
+  parser.add_argument('--n_epochs_validation', type=int, default=5)
   parser.add_argument('--loss', type=str, default='soft_triplet')
   parser.add_argument('--loader_num_workers', type=int, default=4)
   parser.add_argument('--pretrained_weights',type=str, default=None)
@@ -204,8 +205,8 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
       logger.add_scalar(loss_name, avg_loss, it)
     logger.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], it)
 
-    # test
-    if epoch % 3 == 1:
+    # test for first and for every n_epochs
+    if (epoch+1) % opt.n_epochs_validation == 0 or epoch == 0:
       tests = []
       for name, dataset in [('train', trainset), ('test', testset)]:
         t = test_retrieval.test(opt, model, dataset)

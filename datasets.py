@@ -23,6 +23,7 @@ import torch.utils.data
 import torchvision
 import warnings
 import random
+import os
 
 
 class BaseDataset(torch.utils.data.Dataset):
@@ -67,11 +68,12 @@ class CSSDataset(BaseDataset):
 
   def __init__(self, path, split='train', transform=None):
     super(CSSDataset, self).__init__()
-
-    self.img_path = path + '/images/'
+    self.data_root_dir = os.path.dirname(path)
+    self.img_path = self.data_root_dir + '/images/'
     self.transform = transform
     self.split = split
-    self.data = np.load(path + '/css_toy_dataset_novel2_small.dup.npy',allow_pickle=True, encoding="latin1").item()
+    with open(path,"r") as f:
+      self.data = json.load(f)
     self.mods = self.data[self.split]['mods']
     self.imgs = []
     for objects in self.data[self.split]['objects_img']:
