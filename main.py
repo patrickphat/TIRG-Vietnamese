@@ -1,4 +1,4 @@
-# Copyright 2019 Google Inc. All Rights Reserved.
+
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ def parse_opt():
   parser.add_argument('--loss', type=str, default='soft_triplet')
   parser.add_argument('--loader_num_workers', type=int, default=4)
   parser.add_argument('--pretrained_weights',type=str, default=None)
+  parser.add_argument('--skip_eval_trainset',type=bool, default=False)
   args = parser.parse_args()
   return args
 
@@ -64,6 +65,7 @@ def parse_opt():
 def load_dataset(opt):
   """Loads the input datasets."""
   print('Reading dataset ', opt.dataset)
+  
   if opt.dataset == 'css3d':
     trainset = datasets.CSSDataset(
         path=opt.dataset_path,
@@ -123,6 +125,27 @@ def load_dataset(opt):
             torchvision.transforms.Normalize([0.485, 0.456, 0.406],
                                              [0.229, 0.224, 0.225])
         ]))
+  elif opt.dataset == 'mitstates_vn':
+    trainset = datasets.MITStatesVN(
+        path=opt.dataset_path,
+        split='train',
+        transform=torchvision.transforms.Compose([
+            torchvision.transforms.Resize(224),
+            torchvision.transforms.CenterCrop(224),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize([0.485, 0.456, 0.406],
+                                             [0.229, 0.224, 0.225])
+        ]))
+    testset = datasets.MITStatesVN(
+        path=opt.dataset_path,
+        split='test',
+        transform=torchvision.transforms.Compose([
+            torchvision.transforms.Resize(224),
+            torchvision.transforms.CenterCrop(224),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize([0.485, 0.456, 0.406],
+                                             [0.229, 0.224, 0.225])
+        ]))
   else:
     print('Invalid dataset', opt.dataset)
     sys.exit()
@@ -147,6 +170,12 @@ def create_model_and_optimizer(opt, texts):
     model = img_text_composition_models.TIRG(texts, embed_dim=opt.embed_dim)
   elif opt.model == 'tirg_lastconv':
     model = img_text_composition_models.TIRGLastConv(
+        texts, embed_dim=opt.embed_dim)
+  elif opt.model == 'tirg_phobert':
+    model = img_text_composition_models.TIRGPhoBert(
+        texts, embed_dim=opt.embed_dim)
+  elif opt.model == 'tirg_phobert_lastconv':
+    model = img_text_composition_models.TIRGPhoBertLastConv(
         texts, embed_dim=opt.embed_dim)
   else:
     print('Invalid model', opt.model)
@@ -192,6 +221,7 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
   it = 0
   epoch = -1
   tic = time.time()
+  best_metric = 0
   while epoch < opt.num_epochs:
     epoch += 1
 
@@ -204,25 +234,34 @@ def train_loop(opt, logger, trainset, testset, model, optimizer):
       print('    Loss', loss_name, round(avg_loss, 4))
       logger.add_scalar(loss_name, avg_loss, it)
     logger.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], it)
-
+    is_improved = False
     # test for first and for every n_epochs
     if (epoch+1) % opt.n_epochs_validation == 0 or epoch == 0:
       tests = []
       for name, dataset in [('train', trainset), ('test', testset)]:
-        t = test_retrieval.test(opt, model, dataset)
+        if opt.skip_eval_trainset and name=="train":
+          continue
+        t,_ = test_retrieval.test(opt, model, dataset)
         tests += [(name + ' ' + metric_name, metric_value)
                   for metric_name, metric_value in t]
+        recall_top_1 = t[0][1]
+        if name == "test" and recall_top_1 > best_metric:
+          best_metric = recall_top_1
+          is_improved = True
       for metric_name, metric_value in tests:
         logger.add_scalar(metric_name, metric_value, it)
         print('    ', metric_name, round(metric_value, 4))
-
-    # save checkpoint
-    torch.save({
-        'it': it,
-        'opt': opt,
-        'model_state_dict': model.state_dict(),
-    },
-               logger.file_writer.get_logdir() + '/latest_checkpoint.pth')
+    metric_val = tests[0][0]
+    
+    if is_improved:
+      # save checkpoint if improved from last checkpoint
+      print(f"Is Improved {best_metric}")
+      torch.save({
+          'it': it,
+          'opt': opt,
+          'model_state_dict': model.state_dict(),
+      },
+                logger.file_writer.get_logdir() + '/best_checkpoint.pth')
 
     # run trainning for 1 epoch
     model.train()
@@ -293,7 +332,6 @@ def main():
   print('Arguments:')
   for k in list(opt.__dict__.keys()):
     print('    ', k, ':', str(opt.__dict__[k]))
-
   logger = SummaryWriter(comment=opt.comment)
   print('Log files saved to', logger.file_writer.get_logdir())
   for k in list(opt.__dict__.keys()):

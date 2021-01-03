@@ -108,11 +108,18 @@ def test(opt, model, testset):
     # compute recalls
     out = []
     nn_result = [[all_captions[nn] for nn in nns] for nns in nn_result]
+    error_ids = []
     for k in [1, 5, 10, 50, 100]:
         r = 0.0
         for i, nns in enumerate(nn_result):
             if all_target_captions[i] in nns[:k]:
                 r += 1
+            # import ipdb
+            # ipdb.set_trace()
+            elif k == 1:
+                error_ids.append(i)
+
+
         r /= len(nn_result)
         out += [("recall_top" + str(k) + "_correct_composition", r)]
 
@@ -131,4 +138,4 @@ def test(opt, model, testset):
             r /= len(nn_result)
             out += [("recall_top" + str(k) + "_correct_noun", r)]
 
-    return out
+    return out, error_ids

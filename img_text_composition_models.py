@@ -21,6 +21,10 @@ import torchvision
 import torch.nn.functional as F
 import text_model
 import torch_functions
+from torch.nn import MSELoss
+from torch import nn
+from transformers import AutoModel, AutoTokenizer
+from niq import cache
 
 
 class ConCatModule(torch.nn.Module):
@@ -199,9 +203,18 @@ class TIRG(ImgEncoderTextEncoderBase):
     return f
 
 
+
+class TIRGPhoBert(TIRG):
+  """
+  TIRG that uses Phobert as word embedder
+  """
+  def __init__(self, texts, embed_dim):
+    super().__init__(texts, embed_dim)
+    self.text_model = text_model.TextLSTMModelPhoBert(lstm_hidden_dim=embed_dim)
+
+
 class TIRGLastConv(ImgEncoderTextEncoderBase):
   """The TIGR model with spatial modification over the last conv layer.
-
   The method is described in
   Nam Vo, Lu Jiang, Chen Sun, Kevin Murphy, Li-Jia Li, Li Fei-Fei, James Hays.
   "Composing Text and Image for Image Retrieval - An Empirical Odyssey"
@@ -253,3 +266,106 @@ class TIRGLastConv(ImgEncoderTextEncoderBase):
     x = x.view(x.size(0), -1)
     x = self.img_model.fc(x)
     return x
+    
+class TIRGPhoBertLastConv(TIRGLastConv):
+  """
+  TIRG that uses Phobert as word embedder
+  """
+  def __init__(self, texts, embed_dim):
+    super().__init__(texts, embed_dim)
+    self.text_model = text_model.TextLSTMModelPhoBert(lstm_hidden_dim=embed_dim)
+
+class TIRGReconstructionModel(nn.Module):
+  def __init__(self, tirg_model_obj, embed_dim, img_shape):
+    super().__init__()
+    self.embed_dim = embed_dim
+    self.tirg_model = tirg_model_obj
+    self.img_shape = img_shape
+    self.fc = nn.Linear(embed_dim, np.prod(img_shape))
+    
+    for param in self.tirg_model.parameters():
+      param.requires_grad = False
+
+  def forward(self, imgs, texts):
+    # Encoder
+    embed_vector = self.tirg_model.compose_img_text(imgs,texts)
+    # import ipdb
+    # ipdb.set_trace()
+    # Decoder 
+    out = self.fc(embed_vector)
+    batch_size = imgs.shape[0]
+    out = out.reshape([batch_size] + self.img_shape)
+
+    return out 
+
+  def compute_loss(self,
+                   imgs_query,
+                   modification_texts,
+                   imgs_target,
+                   soft_triplet_loss=True):
+                   
+    mod_img_rep = self.tirg_model.compose_img_text(imgs_query, modification_texts)
+    mod_img_rep = self.tirg_model.normalization_layer(mod_img1)
+
+    imgs_reconstructed = self.forward(mod_img_rep)
+
+    loss = MSELoss(imgs_reconstructed, imgs_target)
+    
+    return loss
+
+# class TIRGPhoBert(ImgEncoderTextEncoderBase):
+#   """The TIGR model.
+
+#   The method is described in
+#   Nam Vo, Lu Jiang, Chen Sun, Kevin Murphy, Li-Jia Li, Li Fei-Fei, James Hays.
+#   "Composing Text and Image for Image Retrieval - An Empirical Odyssey"
+#   CVPR 2019. arXiv:1812.07119
+#   """
+
+#   def __init__(self, texts, embed_dim):
+#     super().__init__(texts, embed_dim)
+#     self.text_model = None # Remove text model
+
+#     self.phobert = AutoModel.from_pretrained("vinai/phobert-base")
+#     # For transformers v4.x+: 
+#     self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
+#     self.fc_text = torch.nn.Linear(768, embed_dim)
+#     self.a = torch.nn.Parameter(torch.tensor([1.0, 10.0, 1.0, 1.0]))
+#     self.gated_feature_composer = torch.nn.Sequential(
+#         ConCatModule(), torch.nn.BatchNorm1d(2 * embed_dim), torch.nn.ReLU(),
+#         torch.nn.Linear(2 * embed_dim, embed_dim))
+#     self.res_info_composer = torch.nn.Sequential(
+#         ConCatModule(), torch.nn.BatchNorm1d(2 * embed_dim), torch.nn.ReLU(),
+#         torch.nn.Linear(2 * embed_dim, 2 * embed_dim), torch.nn.ReLU(),
+#         torch.nn.Linear(2 * embed_dim, embed_dim))
+    
+#     # Cache PhoBert
+#     self.tokenizer.encode = cache(self.tokenizer.encode)
+#     self.phobert.__call__ = cache(self.phobert.__call__)
+
+#   def compose_img_text(self, imgs, texts):
+#     img_features = self.extract_img_feature(imgs)
+#     text_features = self.extract_text_feature(texts)
+#     text_features = self.fc_text(text_features)
+#     return self.compose_img_text_features(img_features, text_features)
+
+#   @cache
+#   def extract_text_feature(self, texts):
+
+#     features = []
+#     for text in texts:
+#       input_ids = torch.tensor([self.tokenizer.encode(text)])
+
+#       with torch.no_grad():
+#           _, feature = self.phobert(input_ids.cuda())  # Models outputs are now tuples
+#           features.append(feature)
+
+#     return torch.stack(features, axis = 0)[:,0,:]
+
+
+
+  def compose_img_text_features(self, img_features, text_features):
+    f1 = self.gated_feature_composer((img_features, text_features))
+    f2 = self.res_info_composer((img_features, text_features))
+    f = F.sigmoid(f1) * img_features * self.a[0] + f2 * self.a[1]
+    return f

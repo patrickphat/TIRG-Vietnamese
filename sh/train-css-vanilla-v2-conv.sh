@@ -1,0 +1,2 @@
+python main.py --dataset=css3d --dataset_path=../data/CSSDataset/CSS-vn-v2-segmenter.json --num_epochs=1000 \
+  --model=tirg_lastconv --loss=soft_triplet --comment=css_vn_vanilla_segmenter_last_conv --n_epochs_validation=5 --skip_eval_trainset=True

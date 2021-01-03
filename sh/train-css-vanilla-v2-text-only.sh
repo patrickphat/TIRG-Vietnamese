@@ -1,0 +1,2 @@
+python main.py --dataset=css3d --dataset_path=../data/CSSDataset/CSS-vn-vanilla-v2.json --num_epochs=1000 \
+  --model=textonly --loss=soft_triplet --comment=css_vn_vanilla_v2_text_only --n_epochs_validation=5

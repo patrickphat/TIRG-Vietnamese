@@ -1,0 +1,2 @@
+python main.py --dataset=css3d --dataset_path=../data/CSSDataset/css_vn_augmented_segmenter.json --num_epochs=1000 \
+  --model=tirg_phobert --loss=soft_triplet --comment=new-tirgphobert_css-vn-v2-segmenter --n_epochs_validation=5 --skip_eval_trainset True --pretrained_weights=runs/Dec19_03-02-00_ai-servers-1new-tirgphobert_css-vn-v2-segmenter/best_checkpoint.pth

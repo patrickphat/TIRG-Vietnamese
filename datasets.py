@@ -194,6 +194,8 @@ class CSSDataset(BaseDataset):
       with open(img_path, 'rb') as f:
         img = PIL.Image.open(f)
         img = img.convert('RGB')
+        # import ipdb
+        # ipdb.set_trace()
 
     if raw_img:
       return img
@@ -408,6 +410,7 @@ class MITStates(BaseDataset):
         'steel', 'stream', 'table', 'tea', 'tomato', 'vacuum', 'wax',
         'wheel', 'window', 'wool'
     ]
+    
 
     from os import listdir
     for f in listdir(path + '/images'):
@@ -527,3 +530,175 @@ class MITStates(BaseDataset):
     if self.transform:
       img = self.transform(img)
     return img
+
+class MITStatesVN(MITStates):
+  def __init__(self,*args,**kwargs):
+    super().__init__(*args,**kwargs)
+    self.vocab_dict = {
+      'ancient': 'cổ_xưa',
+      'barren': 'cằn_cỗi',
+      'bent': 'cong vẹo',
+      'blunt': 'cùn',
+      'bright': 'sáng_sủa',
+      'broken': 'hư_hỏng',
+      'browned': 'chiên vàng',
+      'brushed': 'chải_chuốt',
+      'burnt': 'thiêu_đốt',
+      'caramelized': 'caramen hoá',
+      'chipped': 'sứt_mẻ',
+      'clean': 'sạch_sẽ',
+      'clear': 'thông_thoáng',
+      'closed': 'đóng lại',
+      'cloudy': 'nhiều mây',
+      'cluttered': 'lộn_xộn',
+      'coiled': 'uốn_khúc',
+      'cooked': 'nấu chín',
+      'cored': 'bỏ hạt',
+      'cracked': 'nứt_nẻ',
+      'creased': 'nhàu_nát',
+      'crinkled': 'nhàu_nát',
+      'crumpled': 'nhàu_nát',
+      'crushed': 'nghiền nát',
+      'curved': 'uốn cong',
+      'cut': 'cắt',
+      'damp': 'ẩm_ướt',
+      'dark': 'tối',
+      'deflated': 'xẹp xuống',
+      'dented': 'móp',
+      'diced': 'cắt vuông',
+      'dirty': 'dơ_bẩn',
+      'draped': 'phủ lên',
+      'dry': 'khô',
+      'dull': 'ảm_đạm',
+      'empty': 'trống_vắng',
+      'engraved': 'điêu_khắc',
+      'eroded': 'xói_mòn',
+      'fallen': 'rơi',
+      'filled': 'rót đầy',
+      'foggy': 'sương_mù',
+      'folded': 'gấp lại',
+      'frayed': 'sờn rách',
+      'fresh': 'tươi_sống',
+      'frozen': 'đông_lạnh',
+      'full': 'lấp đầy',
+      'grimy': 'dơ_bẩn',
+      'heavy': 'nặng_nề',
+      'huge': 'to_lớn',
+      'inflated': 'thổi_phồng',
+      'large': 'to_lớn',
+      'lightweight': 'nhẹ_nhàng',
+      'loose': 'lỏng_lẻo',
+      'mashed': 'nghiền nát',
+      'melted': 'tan chảy',
+      'modern': 'hiện_đại',
+      'moldy': 'mốc_meo',
+      'molten': 'nấu chảy',
+      'mossy': 'rêu_phong',
+      'muddy': 'bùn_lầy',
+      'murky': 'âm_u',
+      'narrow': 'chật_hẹp',
+      'new': 'mới_mẻ',
+      'old': 'cũ_kĩ',
+      'open': 'mở',
+      'painted': 'sơn màu',
+      'peeled': 'bóc vỏ',
+      'pierced': 'xỏ lỗ',
+      'pressed': 'ép lại',
+      'pureed': 'xay_nhuyễn',
+      'raw': 'còn sống',
+      'ripe': 'chín_muồi',
+      'ripped': 'xé',
+      'rough': 'sần_sùi',
+      'ruffled': 'nhăn_nhúm',
+      'runny': 'chảy nước',
+      'rusty': 'gỉ sét',
+      'scratched': 'trầy',
+      'sharp': 'sắt nhọn',
+      'shattered': 'bể tan',
+      'shiny': 'sáng bóng',
+      'short': 'thấp ngắn',
+      'sliced': 'cắt lát',
+      'small': 'nhỏ_bé',
+      'smooth': 'mượt_mà',
+      'spilled': 'chảy nước',
+      'splintered': 'mảnh vụn',
+      'squished': 'nhăn_nheo',
+      'standing': 'đứng thẳng',
+      'steaming': 'hấp_hơi',
+      'straight': 'thẳng',
+      'sunny': 'ánh nắng',
+      'tall': 'cao',
+      'thawed': 'rã đông',
+      'thick': 'dày',
+      'thin': 'mỏng',
+      'tight': 'bó sát',
+      'tiny': 'nhỏ_bé',
+      'toppled': 'ngã',
+      'torn': 'rách_nát',
+      'unpainted': 'chưa sơn màu',
+      'unripe': 'chưa chín',
+      'upright': 'thẳng_đứng',
+      'verdant': 'xanh_tươi',
+      'viscous': 'nhầy nhớt',
+      'weathered': 'phong_hoá',
+      'wet': 'ẩm_ướt',
+      'whipped': 'đánh lên',
+      'wide': 'rộng',
+      'wilted': 'héo tàn',
+      'windblown': 'gió thổi',
+      'winding': 'quanh_co',
+      'worn': 'hao_mòn',
+      'wrinkled': 'nếp nhăn',
+      'young': 'trẻ_trung'
+    }
+
+  def __getitem__(self, idx):
+    try:
+      self.saved_item
+    except:
+      self.saved_item = None
+    if self.saved_item is None:
+      while True:
+        idx, target_idx1 = self.caption_index_sample_(idx)
+        idx, target_idx2 = self.caption_index_sample_(idx)
+        if self.imgs[target_idx1]['adj'] != self.imgs[target_idx2]['adj']:
+          break
+      idx, target_idx = [idx, target_idx1]
+      self.saved_item = [idx, target_idx2]
+    else:
+      idx, target_idx = self.saved_item
+      self.saved_item = None
+
+    mod_str = self.imgs[target_idx]['adj']
+    mod_str = self.vocab_dict[mod_str]
+
+    return {
+        'source_img_id': idx,
+        'source_img_data': self.get_img(idx),
+        'source_caption': self.imgs[idx]['captions'][0],
+        'target_img_id': target_idx,
+        'target_img_data': self.get_img(target_idx),
+        'target_caption': self.imgs[target_idx]['captions'][0],
+        'mod': {
+            'str': mod_str
+        }
+    }
+  
+  def get_all_texts(self):
+    texts = []
+    for img in self.imgs:
+      # import ipdb
+      text = img['captions'][0]
+      text = text.split()
+      for k,v in self.vocab_dict.items():
+        for i, val in enumerate(text):
+          if val == k:
+            text[i] = v
+          
+      text = ' '.join(text)
+      # import ipdb
+      # ipdb.set_trace()
+      # ipdb.set_trace()
+      texts += [text]
+    return texts
+    
