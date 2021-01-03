@@ -1,2 +1,0 @@
-python main.py --dataset=css3d --dataset_path=../data/CSSDataset/CSS-vn-vanilla-v2.json --num_epochs=1000 \
-  --model=tirg --loss=soft_triplet --comment=css_vn_vanilla_v2 --n_epochs_validation=5 --loader_num_workers 6
